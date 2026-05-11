@@ -1,0 +1,14 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+import DashboardPage from "@/pages/dashboard";
+import ProjectDetail from "@/pages/project-detail";
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/project/:projectId" element={<ProjectDetail />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}
