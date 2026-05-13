@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Edit, Trash2, Save, X, FileText, Settings, Upload, Database, ChevronRight, CheckCircle, ArrowRight, Zap, BarChart3, Download, Calendar } from 'lucide-react';
+import { Trash2, FileText, Upload, Database, CheckCircle, ArrowRight, Zap, BarChart3, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { documentApi, type Project } from '@/lib/api';
 
@@ -197,24 +197,16 @@ const DocumentWorkspace: React.FC<{ user: any }> = ({ user }) => {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      Promise.all([loadProjects(), loadUserProfile()]).catch(error => {
-        console.error('Error loading dashboard data:', error);
-      });
-    }
-  }, [user]);
-
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
     try {
       const profile = await documentApi.getUserProfile();
       setUserProfile(profile);
     } catch (error) {
       console.error('Error loading user profile:', error);
     }
-  };
+  }, []);
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     setLoadingProjects(true);
     try {
       const projectsData = await documentApi.getProjects();
@@ -225,7 +217,13 @@ const DocumentWorkspace: React.FC<{ user: any }> = ({ user }) => {
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (user) {
+      Promise.all([loadProjects(), loadUserProfile()]).catch(() => {});
+    }
+  }, [user, loadProjects, loadUserProfile]);
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) {
@@ -422,7 +420,6 @@ const DocumentWorkspace: React.FC<{ user: any }> = ({ user }) => {
 };
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
   // No auth — set a default local user immediately
   const [user] = useState<any>({ id: 'local', email: 'local@qgen.app' });
   const [loading] = useState(false);

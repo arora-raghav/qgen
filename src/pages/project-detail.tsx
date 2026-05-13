@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -121,9 +121,12 @@ const ProjectDetail: React.FC = () => {
   // Quality analysis state
   const [qualityMetrics, setQualityMetrics] = useState<QAQualityMetrics | null>(null);
   const [qualityAnalysisLoading, setQualityAnalysisLoading] = useState(false);
+  // Delete document dialog state
+  const [showDeleteDocDialog, setShowDeleteDocDialog] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<{id: string, filename: string} | null>(null);
 
   // Calculate basic quality metrics (for Step 4)
-  const calculateBasicQualityMetrics = () => {
+  const calculateBasicQualityMetrics = useCallback(() => {
     if (!dataset || !schema || schema.mode !== 'qa') {
       return;
     }
@@ -148,7 +151,7 @@ const ProjectDetail: React.FC = () => {
     } catch (error) {
       console.error('Error calculating basic quality metrics:', error);
     }
-  };
+  }, [dataset, schema]);
   
   // Step-by-step workflow state
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -175,7 +178,7 @@ const ProjectDetail: React.FC = () => {
       loadSchema();
       loadDataset();
     }
-  }, [user, projectId, project]); // Added project as dependency to prevent re-loading
+  }, [user, projectId]);
 
   // Poll for active task updates
   useEffect(() => {
@@ -386,11 +389,9 @@ const ProjectDetail: React.FC = () => {
   const loadProject = async () => {
     if (!projectId) return;
     
-    console.log('Loading project:', projectId); // Debug log
     setLoading(true); // Set loading to true when starting
     try {
       const projectData = await documentApi.getProject(projectId);
-      console.log('Project loaded successfully:', projectData); // Debug log
       setProject(projectData);
     } catch (error: any) {
       console.error('Error loading project:', error);
@@ -401,7 +402,6 @@ const ProjectDetail: React.FC = () => {
       });
       navigate('/dashboard');
     } finally {
-      console.log('Setting loading to false'); // Debug log
       setLoading(false); // Always set loading to false when done
     }
   };
@@ -412,13 +412,6 @@ const ProjectDetail: React.FC = () => {
     setLoadingDocuments(true);
     try {
       const docs = await documentApi.getProjectDocuments(projectId);
-      console.log(' Raw documents from API:', docs);
-      console.log('📄 Document page counts:', docs.map(doc => ({
-        filename: doc.filename,
-        page_count: doc.page_count,
-        page_count_type: typeof doc.page_count,
-        has_page_count: 'page_count' in doc
-      })));
       setDocuments(docs);
     } catch (error: any) {
       console.error('Error loading documents:', error);
@@ -563,19 +556,21 @@ const ProjectDetail: React.FC = () => {
     setCurrentStep(2);
   };
 
-  const handleDeleteDocument = async (documentId: string, filename: string) => {
+  const handleDeleteDocument = (documentId: string, filename: string) => {
     if (!projectId) return;
-    
-    // Confirmation dialog
-    const confirmed = window.confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`);
-    if (!confirmed) return;
+    setDocToDelete({ id: documentId, filename });
+    setShowDeleteDocDialog(true);
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!projectId || !docToDelete) return;
     
     try {
-      await documentApi.deleteDocument(projectId, documentId);
+      await documentApi.deleteDocument(projectId, docToDelete.id);
       
       toast({
         title: "Document Deleted",
-        description: `"${filename}" has been deleted successfully`,
+        description: `"${docToDelete.filename}" has been deleted successfully`,
         variant: "default"
       });
       
@@ -589,6 +584,9 @@ const ProjectDetail: React.FC = () => {
         description: error.message || "Failed to delete document",
         variant: "destructive"
       });
+    } finally {
+      setShowDeleteDocDialog(false);
+      setDocToDelete(null);
     }
   };
 
@@ -2343,6 +2341,19 @@ const ProjectDetail: React.FC = () => {
               Generate {customNumRecords} Q&A Pairs
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteDocDialog} onOpenChange={setShowDeleteDocDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Document</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to delete "{docToDelete?.filename}"? This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setShowDeleteDocDialog(false); setDocToDelete(null); }}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmDeleteDocument}>Delete Document</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
       </div>
