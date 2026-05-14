@@ -9,7 +9,9 @@
 
 **QGen** transforms your documents into high-quality, structured training datasets using AI. Upload PDFs, Word docs, PowerPoint presentations, or images — QGen extracts content, generates an intelligent schema, and produces synthetic Q&A or business datasets ready for fine-tuning LLMs, testing, or analytics.
 
----
+<p align="center">
+  <img src="interactive.gif" alt="QGen GIF" width="700">
+</p>---
 
 ## 📑 Table of Contents
 
