@@ -10,23 +10,18 @@ from fastapi.responses import StreamingResponse
 import logging
 import re
 
-from .document_auth import get_document_user, check_document_limits, DocumentUser, security
-from .auth import get_api_key  # Add API key auth for testing
-from fastapi.security import HTTPAuthorizationCredentials
+from .document_auth import get_document_user, check_document_limits, DocumentUser
 from .models import (
-    ProjectCreateRequest, ProjectUpdateRequest, ProjectDetailResponse, ProjectListResponse,
-    SchemaGenerateRequest, SchemaUpdateRequest, SchemaResponse,
-    DatasetGenerateRequest, DatasetRecordsUpdateRequest, ExportRequest,
-    DocumentUploadResponse, DocumentStatusResponse, GenerationStatusResponse,
-    DatasetDetailResponse, ExportResponse, LimitCheckResponse, APIResponse,
+    ProjectCreateRequest, ProjectUpdateRequest, ProjectDetailResponse,
+    SchemaGenerateRequest, DatasetGenerateRequest, APIResponse,
     ProjectSummary, DocumentSummary, DatasetSummary,
     SchemaPutRequest
 )
-from .supabase_client import supabase_service, get_supabase_client
+from .supabase_client import supabase_service
 from fastapi import Body
 from .document_processing import generate_dataset_schema, generate_full_dataset, create_chunks, process_document_hybrid
 from .background_tasks import get_task_manager, TaskType
-from .processing_pipeline import schema_generation_task, dataset_generation_task, document_processing_task
+from .processing_pipeline import schema_generation_task, dataset_generation_task
 
 # Additional imports for file processing
 import tempfile
@@ -349,13 +344,34 @@ async def get_project(
         
         project = project_response.data
         
-        # Get documents
+        # Get documents — map DB columns to model fields
         documents_response = client.table("documents").select("*").eq("project_id", project_id).is_("deleted_at", "null").execute()
-        documents = [DocumentSummary(**doc) for doc in documents_response.data]
+        documents = []
+        for doc in documents_response.data:
+            documents.append(DocumentSummary(
+                id=doc["id"],
+                filename=doc["filename"],
+                file_size=doc.get("file_size", 0),
+                file_type=doc.get("file_type", ""),
+                status=doc.get("status", "uploaded"),
+                pages_extracted=doc.get("pages_extracted"),
+                pages_processed=doc.get("page_count", 0),
+                error_message=doc.get("error_message"),
+                created_at=doc["created_at"],
+                updated_at=doc["updated_at"],
+            ))
         
-        # Get datasets
+        # Get datasets — map DB columns to model fields
         datasets_response = client.table("datasets").select("*").eq("project_id", project_id).execute()
-        datasets = [DatasetSummary(**dataset) for dataset in datasets_response.data]
+        datasets = []
+        for ds in datasets_response.data:
+            datasets.append(DatasetSummary(
+                id=ds["id"],
+                total_records=ds.get("total_records", 0),
+                approved_records=ds.get("total_records", 0),
+                generation_config=ds.get("schema_used") if isinstance(ds.get("schema_used"), dict) else {"fields": ds.get("schema_used", [])},
+                created_at=ds["created_at"],
+            ))
         
         return APIResponse(
             success=True,
@@ -363,7 +379,7 @@ async def get_project(
                 id=project["id"],
                 name=project["name"],
                 description=project.get("description"),
-                instruction=project["instruction"],
+                instruction=project.get("instruction"),
                 status=project["status"],
                 schema_config=project.get("schema_config"),
                 total_pages_processed=project.get("total_pages_processed", 0),
@@ -1422,15 +1438,5 @@ async def get_project_jobs(
     except Exception as e:
         logger.error(f"Error getting project jobs: {e}")
         raise HTTPException(status_code=500, detail="Failed to get project jobs")
-
-# TEMPORARY: Test endpoint with API key authentication for development
-@router.get("/test")
-async def test_endpoint(api_key: str = Depends(get_api_key)):
-    """Test endpoint to verify API is working"""
-    return APIResponse(
-        success=True,
-        data={"message": "Document API is working", "timestamp": datetime.now(timezone.utc).isoformat()},
-        message="Test successful"   
-    )
 
 # END OF DOCUMENT_ROUTES.PY

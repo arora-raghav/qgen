@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 # Storage root                                                                  #
 # --------------------------------------------------------------------------- #
-_BASE_DIR = Path(os.getenv("QGEN_DATA_DIR", "./data"))
+_DEFAULT_DATA = Path(__file__).resolve().parent.parent / "data"
+_BASE_DIR = Path(os.getenv("QGEN_DATA_DIR", str(_DEFAULT_DATA))).resolve()
 _DB_PATH   = _BASE_DIR / "qgen.db"
 _FILES_DIR = _BASE_DIR / "files"
 
@@ -150,9 +151,16 @@ _NOW = lambda: datetime.now(timezone.utc).isoformat()
 # Result wrapper (mirrors supabase-py response)                                #
 # --------------------------------------------------------------------------- #
 class _Result:
-    def __init__(self, data: List[Dict], count: Optional[int] = None, error=None):
+    def __init__(self, data, count: Optional[int] = None, error=None):
         self.data  = data
-        self.count = count if count is not None else (len(data) if data else 0)
+        if count is not None:
+            self.count = count
+        elif isinstance(data, list):
+            self.count = len(data)
+        elif data:
+            self.count = 1
+        else:
+            self.count = 0
         self.error = error
 
 
@@ -292,12 +300,14 @@ class _Query:
         return d
 
     def _exec_select(self, conn: sqlite3.Connection) -> _Result:
-        cols = self._cols if self._cols != "*" else "*"
-        # Strip "count" hints from column list (handled separately)
-        clean_cols = ", ".join(
-            f'"{c.strip()}"' for c in cols.split(",")
-            if c.strip() not in ("", ) and "count" not in c.lower()
-        ) or "*"
+        # Build column list — leave "*" unquoted, quote named columns
+        if self._cols == "*":
+            clean_cols = "*"
+        else:
+            clean_cols = ", ".join(
+                f'"{c.strip()}"' for c in self._cols.split(",")
+                if c.strip() not in ("", ) and "count" not in c.lower()
+            ) or "*"
 
         where_clause = f"WHERE {' AND '.join(self._wheres)}" if self._wheres else ""
         order_clause = ""
@@ -316,7 +326,8 @@ class _Query:
             count = conn.execute(count_sql, self._params).fetchone()[0]
 
         if self._single:
-            return _Result([data[0]] if data else [], count)
+            # Mimic supabase-py: .single() sets .data to the dict itself (or [])
+            return _Result(data[0] if data else [], count)
         return _Result(data, count)
 
     def _exec_insert(self, conn: sqlite3.Connection) -> _Result:

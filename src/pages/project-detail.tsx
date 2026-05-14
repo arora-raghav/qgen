@@ -910,11 +910,7 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            {/* {getStatusBadge(project.status)} */}
-            <Button variant="outline">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
+            {getStatusBadge(project.status)}
           </div>
         </div>
 
@@ -1856,6 +1852,7 @@ const ProjectDetail: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
+                  <TooltipProvider>
                   <div className="space-y-6">
                     {/* Overall Quality Score */}
                     <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-6">
@@ -2153,6 +2150,7 @@ const ProjectDetail: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  </TooltipProvider>
                 )}
               </CardContent>
             </Card>

@@ -4,16 +4,20 @@ import hashlib
 import time
 import shutil
 import logging
+import tempfile
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+# Cross-platform default: use QGEN_DATA_DIR/cache or system temp
+_DEFAULT_CACHE_DIR = os.path.join(os.getenv("QGEN_DATA_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")), "cache")
+
 class ChunkCache:
     """File system cache for processed document chunks."""
     
-    def __init__(self, cache_dir: str = "/tmp/cache", max_size_gb: float = 1.0, ttl_days: int = 7):
+    def __init__(self, cache_dir: str = _DEFAULT_CACHE_DIR, max_size_gb: float = 1.0, ttl_days: int = 7):
         self.cache_dir = Path(cache_dir)
         self.chunks_dir = self.cache_dir / "chunks"
         self.metadata_dir = self.cache_dir / "metadata"
