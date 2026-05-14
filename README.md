@@ -192,9 +192,7 @@ qgen/
 │   ├── .env.example              # Environment variable template
 │   ├── Dockerfile                # Backend container definition
 │   ├── requirements.txt          # Python dependencies
-│   ├── seed_data.py              # Database seed script
-│   ├── start.bat                 # Windows startup script
-│   └── start.sh                  # Linux/macOS startup script
+│   └── seed_data.py              # Database seed script
 │
 ├── public/                       # Static assets
 ├── dist/                         # Production build output
@@ -239,18 +237,9 @@ cd qgen
 # Navigate to backend
 cd backend
 
-# Option A: Use the startup script (recommended)
-# Linux/macOS:
-chmod +x start.sh
-./start.sh
-
-# Windows:
-start.bat
-
-# Option B: Manual setup
+# Create and activate virtual environment
 python -m venv .venv
 
-# Activate virtual environment
 # Linux/macOS:
 source .venv/bin/activate
 # Windows:
