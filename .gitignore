@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.local
+*.local
+# Backend runtime data (SQLite DB + uploaded files)
+backend/data/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/tokens.txt
+tokens.txt
